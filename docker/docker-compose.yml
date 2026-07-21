@@ -1,0 +1,86 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: bootcamp-postgres
+    environment:
+      POSTGRES_DB: bootcamp
+      POSTGRES_USER: bootcamp
+      POSTGRES_PASSWORD: bootcamp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bootcamp -d bootcamp"]
+      interval: 5s
+      retries: 10
+
+  airflow-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bootcamp-airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql://bootcamp:bootcamp@postgres:5432/bootcamp
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW_CONN_POSTGRES_BOOTCAMP: postgresql://bootcamp:bootcamp@postgres:5432/bootcamp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+      "
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bootcamp-airflow
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql://bootcamp:bootcamp@postgres:5432/bootcamp
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW_CONN_POSTGRES_BOOTCAMP: postgresql://bootcamp:bootcamp@postgres:5432/bootcamp
+    volumes:
+      - ../dags:/opt/airflow/dags
+      - ../src:/opt/airflow/src
+      - ../sql:/opt/airflow/sql
+      - ../data:/opt/airflow/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    command: >
+      bash -c "
+      airflow webserver & airflow scheduler
+      "
+
+  jupyter:
+    image: jupyter/base-notebook:latest
+    container_name: bootcamp-jupyter
+    environment:
+      JUPYTER_TOKEN: bootcamp
+    volumes:
+      - ../notebooks:/home/jovyan/work
+      - ../data:/home/jovyan/data
+      - ../src:/home/jovyan/src
+      - ../sql:/home/jovyan/sql
+    ports:
+      - "8888:8888"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -c "
+      pip install --upgrade pandas matplotlib seaborn 'sqlalchemy>=2.0.36' psycopg2-binary pyarrow &&
+      start-notebook.sh --NotebookApp.token='bootcamp'
+      "
+
+volumes:
+  postgres_data:
