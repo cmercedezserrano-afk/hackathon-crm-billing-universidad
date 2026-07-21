@@ -4,3 +4,5 @@ __pycache__/
 data/parquet/
 postgres_data/
 .DS_Store
+
+.ipynb_checkpoints/
