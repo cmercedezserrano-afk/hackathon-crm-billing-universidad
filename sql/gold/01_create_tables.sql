@@ -98,15 +98,24 @@ CREATE TABLE gold.dim_contacts AS SELECT * FROM silver.contacts;
 ALTER TABLE gold.dim_contacts ADD PRIMARY KEY (contact_id);
 
 -- dim_opportunity_stage: dimension conformada para etapas del pipeline
--- Permite ordenar etapas y agregar metadatos de etapa sin tocar el hecho
+-- stage_name_es contiene la traduccion al espanol para reportes
 DROP TABLE IF EXISTS gold.dim_opportunity_stage CASCADE;
 CREATE TABLE gold.dim_opportunity_stage AS
 SELECT
     ROW_NUMBER() OVER (ORDER BY sort_order) AS stage_sk,
-    stage AS stage_name,
+    stage AS stage_name_en,
+    CASE stage
+        WHEN 'prospect' THEN 'Prospeccion'
+        WHEN 'qualification' THEN 'Calificacion'
+        WHEN 'proposal' THEN 'Propuesta'
+        WHEN 'negotiation' THEN 'Negociacion'
+        WHEN 'won' THEN 'Ganada'
+        WHEN 'lost' THEN 'Perdida'
+        ELSE stage
+    END AS stage_name_es,
     CASE
-        WHEN stage IN ('closed_won') THEN 'Ganada'
-        WHEN stage IN ('closed_lost') THEN 'Perdida'
+        WHEN stage IN ('won') THEN 'Ganada'
+        WHEN stage IN ('lost') THEN 'Perdida'
         WHEN stage IN ('negotiation', 'proposal') THEN 'Avanzada'
         ELSE 'Temprana'
     END AS stage_category,
@@ -114,12 +123,12 @@ SELECT
 FROM (
     SELECT DISTINCT stage,
         CASE stage
-            WHEN 'prospecting' THEN 1
+            WHEN 'prospect' THEN 1
             WHEN 'qualification' THEN 2
             WHEN 'proposal' THEN 3
             WHEN 'negotiation' THEN 4
-            WHEN 'closed_won' THEN 5
-            WHEN 'closed_lost' THEN 6
+            WHEN 'won' THEN 5
+            WHEN 'lost' THEN 6
             ELSE 7
         END AS sort_order
     FROM silver.opportunities
@@ -255,15 +264,15 @@ SELECT
     o.opportunity_id,
     o.account_id,
     o.name,
-    o.stage,
     dos.stage_sk,
+    dos.stage_name_es AS stage,
     o.amount,
     o.close_date,
     dd_close.date_sk AS close_date_sk,
     o.created_at,
     dd_created.date_sk AS created_date_sk
 FROM silver.opportunities o
-LEFT JOIN gold.dim_opportunity_stage dos ON o.stage = dos.stage_name
+LEFT JOIN gold.dim_opportunity_stage dos ON o.stage = dos.stage_name_en
 LEFT JOIN gold.dim_date dd_close ON o.close_date::DATE = dd_close.date
 LEFT JOIN gold.dim_date dd_created ON o.created_at::DATE = dd_created.date;
 ALTER TABLE gold.fact_opportunities ADD PRIMARY KEY (opportunity_id);
@@ -381,24 +390,32 @@ JOIN silver.invoices i ON p.invoice_id = i.invoice_id
 GROUP BY DATE_TRUNC('month', p.paid_at)
 ORDER BY month;
 
--- KPI: Pipeline de ventas
+-- KPI: Pipeline de ventas (etapas en espanol)
 DROP TABLE IF EXISTS gold.kpi_sales_pipeline;
 CREATE TABLE gold.kpi_sales_pipeline AS
 SELECT
-    stage,
-    COUNT(*) AS opportunities_count,
-    SUM(amount) AS total_amount,
-    ROUND(AVG(amount), 2) AS avg_amount
+    CASE stage
+        WHEN 'prospect' THEN 'Prospeccion'
+        WHEN 'qualification' THEN 'Calificacion'
+        WHEN 'proposal' THEN 'Propuesta'
+        WHEN 'negotiation' THEN 'Negociacion'
+        WHEN 'won' THEN 'Ganada'
+        WHEN 'lost' THEN 'Perdida'
+        ELSE stage
+    END AS etapa,
+    COUNT(*) AS oportunidades,
+    SUM(amount) AS monto_total,
+    ROUND(AVG(amount), 2) AS monto_promedio
 FROM silver.opportunities
 GROUP BY stage
 ORDER BY
     CASE stage
-        WHEN 'prospecting' THEN 1
+        WHEN 'prospect' THEN 1
         WHEN 'qualification' THEN 2
         WHEN 'proposal' THEN 3
         WHEN 'negotiation' THEN 4
-        WHEN 'closed_won' THEN 5
-        WHEN 'closed_lost' THEN 6
+        WHEN 'won' THEN 5
+        WHEN 'lost' THEN 6
         ELSE 7
     END;
 
