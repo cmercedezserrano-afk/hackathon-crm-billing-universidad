@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .env
 data/parquet/
+data/silver/
 postgres_data/
 .DS_Store
 

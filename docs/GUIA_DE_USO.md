@@ -321,6 +321,20 @@ dim_products.product_sk ← fact_subscriptions.product_sk / fact_invoices.produc
 dim_opportunity_stage.stage_sk ← fact_opportunities.stage_sk
 ```
 
+### Relaciones adicionales para KPIs
+
+Si cargas KPIs como tablas independientes, agrega estas relaciones manualmente en **Modelo**:
+
+| Desde | Hacia | Columna | Tipo |
+|---|---|---|---|
+| `dim_professors` | `dim_courses` | `professor_id` | Muchos a 1 |
+| `dim_opportunity_stage` | `kpi_sales_pipeline` | `stage_name_es` ↔ `etapa` | 1 a 1 |
+| `kpi_course_performance` | `dim_courses` | `course_id` | Muchos a 1 |
+| `kpi_rfm_segments` | `dim_customers` | `customer_id` | Muchos a 1 |
+| `dim_students` ↔ `bridge_student_customer` ↔ `dim_customers` | — | `student_id` / `customer_id` | Puente |
+
+Para agregarlas: **Modelo** (vista) → **Administrar relaciones** → **Nueva** → seleccionar tablas y columnas.
+
 ### Sugerencia de dashboards
 
 | Dashboard | Tablas base | KPIs |
