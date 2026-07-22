@@ -273,6 +273,61 @@ La capa Gold usa **esquema estrella**: las dimensiones rodean a los hechos para 
 
 ---
 
+## 12. Conectar Power BI Desktop
+
+Power BI Desktop puede conectarse directamente al esquema Gold para crear dashboards.
+
+### Requisitos
+- **Power BI Desktop** instalado en Windows.
+- PostgreSQL accesible desde Windows (localhost:5432).
+
+### Pasos
+
+1. Abrir Power BI Desktop.
+2. **Obtener datos** → **Más...** → **Base de datos PostgreSQL** → **Conectar**.
+3. Ingresar las credenciales:
+
+   | Campo | Valor |
+   |---|---|
+   | Servidor | `localhost:5432` |
+   | Base de datos | `bootcamp` |
+   | Modo | Importar (recomendado) |
+   | Usuario | `bootcamp` |
+   | Contraseña | `bootcamp` |
+
+4. En el navegador, seleccionar el esquema **gold** y marcar las tablas deseadas:
+
+   - **Dimensiones**: `dim_date`, `dim_students`, `dim_customers`, `dim_products`, `dim_courses`, `dim_accounts`, `dim_contacts`, `dim_opportunity_stage`, `dim_professors`, `dim_semesters`
+   - **Hechos**: `fact_enrollments`, `fact_grades`, `fact_subscriptions`, `fact_invoices`, `fact_payments`, `fact_opportunities`, `fact_activities`
+   - **Puente**: `bridge_student_customer`, `fact_student_customer`
+   - **KPIs**: las 10 tablas `kpi_*`
+
+5. Cargar los datos.
+
+### Relaciones automáticas
+
+Power BI detecta automáticamente las relaciones por las claves foráneas definidas en PostgreSQL. Verificar en **Modelo** que las relaciones sean correctas:
+
+```
+dim_date.date_sk ← fact_*.date_sk
+dim_students.student_sk ← fact_enrollments.student_sk / fact_grades.student_sk
+dim_courses.course_sk ← fact_enrollments.course_sk / fact_grades.course_sk
+dim_customers.customer_sk ← fact_*.customer_sk
+dim_products.product_sk ← fact_subscriptions.product_sk / fact_invoices.product_sk
+dim_opportunity_stage.stage_sk ← fact_opportunities.stage_sk
+```
+
+### Sugerencia de dashboards
+
+| Dashboard | Tablas base | KPIs |
+|---|---|---|
+| Ingresos y cobranza | `fact_invoices`, `fact_payments`, `dim_date`, `kpi_collection_risk` | Ingreso mensual, mora, riesgo |
+| Rendimiento académico | `fact_grades`, `fact_enrollments`, `dim_students`, `dim_courses`, `kpi_course_performance` | Promedio por curso, carga docente |
+| CRM y ventas | `fact_opportunities`, `fact_activities`, `dim_opportunity_stage`, `kpi_sales_pipeline` | Pipeline por etapa, actividades |
+| Segmentación clientes | `kpi_rfm_segments`, `kpi_subscription_churn`, `bridge_student_customer` | RFM, churn, estudiantes → clientes |
+
+---
+
 ## 13. Recomendación para presentación en Millicom (Tigo) Bolivia
 
 Este proyecto se construyó con datos de University, Billing y CRM, pero las técnicas aplicadas son directamente transferibles a un operador de telecomunicaciones como Tigo.
