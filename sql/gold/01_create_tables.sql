@@ -545,3 +545,39 @@ FROM gold.fact_invoices i
 JOIN silver.customers c ON i.customer_id = c.customer_id
 GROUP BY c.customer_id, c.first_name, c.last_name, c.country
 ORDER BY total_debt DESC;
+
+-- KPI: Tasa de aprobacion por curso (nota minima 51)
+DROP TABLE IF EXISTS gold.kpi_pass_rate;
+CREATE TABLE gold.kpi_pass_rate AS
+SELECT
+    c.course_id,
+    c.code,
+    c.name AS course_name,
+    c.department,
+    COUNT(DISTINCT e.student_id) AS total_students,
+    ROUND(AVG(g.score), 2) AS avg_score,
+    SUM(CASE WHEN g.score >= 51 THEN 1 ELSE 0 END) AS passed,
+    SUM(CASE WHEN g.score < 51 THEN 1 ELSE 0 END) AS failed,
+    ROUND(SUM(CASE WHEN g.score >= 51 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(g.grade_id), 0), 1) AS pass_rate_pct,
+    ROUND(SUM(CASE WHEN g.score < 51 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(g.grade_id), 0), 1) AS fail_rate_pct
+FROM silver.courses c
+LEFT JOIN silver.enrollments e ON c.course_id = e.course_id
+LEFT JOIN silver.grades g ON e.enrollment_id = g.enrollment_id
+GROUP BY c.course_id, c.code, c.name, c.department
+ORDER BY pass_rate_pct DESC;
+
+-- KPI: Matriculas por semestre
+DROP TABLE IF EXISTS gold.kpi_enrollment_trend;
+CREATE TABLE gold.kpi_enrollment_trend AS
+SELECT
+    sem.semester_id,
+    sem.code AS semester_name,
+    sem.start_date,
+    sem.end_date,
+    COUNT(DISTINCT e.enrollment_id) AS total_enrollments,
+    COUNT(DISTINCT e.student_id) AS total_students,
+    COUNT(DISTINCT e.course_id) AS total_courses
+FROM silver.semesters sem
+LEFT JOIN silver.enrollments e ON sem.semester_id = e.semester_id
+GROUP BY sem.semester_id, sem.code, sem.start_date, sem.end_date
+ORDER BY sem.start_date;

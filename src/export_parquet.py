@@ -34,6 +34,8 @@ GOLD_TABLES = [
     "kpi_subscription_churn",
     "kpi_student_lifecycle",
     "kpi_collection_risk",
+    "kpi_pass_rate",
+    "kpi_enrollment_trend",
 ]
 
 

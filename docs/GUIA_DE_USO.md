@@ -137,6 +137,8 @@ Bronze ──→ Silver ──→ Gold ──→ Quality ──→ Parquet
 | 12 | Churn de suscripciones | Billing | Activas vs canceladas por producto |
 | 13 | Ciclo de vida estudiante → cliente | Cruce | Días hasta primera factura por país |
 | 14 | Riesgo de cobranza | Billing | Clientes en riesgo Alto / Medio / Bajo |
+| 15 | Tasa de aprobación | University | % de aprobación por curso |
+| 16 | Matrículas por semestre | University | Evolución de inscripciones |
 
 ---
 
@@ -270,6 +272,8 @@ La capa Gold usa **esquema estrella**: las dimensiones rodean a los hechos para 
 | Churn de suscripciones | `kpi_subscription_churn` | 200 | Tasa de cancelación |
 | Ciclo de vida | `kpi_student_lifecycle` | 5,000 | Días de estudiante a cliente |
 | Riesgo de cobranza | `kpi_collection_risk` | 9,933 | Clientes por nivel de riesgo |
+| Tasa de aprobación | `kpi_pass_rate` | 300 | % aprobados y reprobados por curso |
+| Matrículas por semestre | `kpi_enrollment_trend` | 8 | Evolución de inscripciones por semestre |
 
 ---
 

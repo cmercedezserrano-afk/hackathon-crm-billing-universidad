@@ -173,6 +173,17 @@ El pipeline ejecuta validaciones automáticas después de construir Gold:
 - Verificación de llaves foráneas
 - Reporte de inconsistencias entre dominios
 
+## KPIs de University adicionales (v2)
+
+Se agregaron dos KPIs para completar el dominio académico:
+
+| KPI | Nota | Por qué |
+|---|---|---|
+| `kpi_pass_rate` | Tasa de aprobación por curso (nota >= 51) | Permite identificar cursos con alta reprobación |
+| `kpi_enrollment_trend` | Matrículas por semestre (2022-1 a 2025-2) | Muestra la evolución de la demanda académica |
+
+Estos KPIs se suman a los existentes: `kpi_student_performance` (promedio por estudiante), `kpi_course_performance` (promedio por curso) y `kpi_professor_load` (carga docente).
+
 ## Orquestación
 
 El DAG `bootcamp_pipeline` ejecuta 5 tareas en serie:
