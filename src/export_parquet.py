@@ -3,6 +3,12 @@ from pathlib import Path
 
 from utils import get_connection, DATA_DIR
 
+SILVER_TABLES = [
+    "accounts", "activities", "contacts", "courses", "customers",
+    "enrollments", "grades", "invoice_items", "invoices", "leads",
+    "opportunities", "opportunity_contacts", "payments", "products",
+    "professors", "semesters", "students", "subscriptions",
+]
 
 GOLD_TABLES = [
     "dim_date",
@@ -39,20 +45,22 @@ GOLD_TABLES = [
 ]
 
 
-def export_gold_to_parquet():
-    output_dir = DATA_DIR / "parquet"
+def export_schema(schema, tables, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
-
     with get_connection() as conn:
-        for table in GOLD_TABLES:
-            print(f"Exportando gold.{table} ...")
-            df = pd.read_sql(f"SELECT * FROM gold.{table}", conn)
+        for table in tables:
+            print(f"Exportando {schema}.{table} ...")
+            df = pd.read_sql(f"SELECT * FROM {schema}.{table}", conn)
             filepath = output_dir / f"{table}.parquet"
             df.to_parquet(filepath, index=False)
             print(f"  -> {filepath} ({len(df)} filas)")
 
+
+def export_all():
+    export_schema("silver", SILVER_TABLES, DATA_DIR / "silver")
+    export_schema("gold", GOLD_TABLES, DATA_DIR / "parquet")
     print("Exportación completada.")
 
 
 if __name__ == "__main__":
-    export_gold_to_parquet()
+    export_all()
