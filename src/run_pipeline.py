@@ -22,7 +22,7 @@ def step_bronze():
 
 
 def step_silver():
-    print("=== PASO 3: Crear tablas Silver con llaves forneas ===")
+    print("=== PASO 3: Crear tablas Silver con llaves foráneas ===")
     with get_connection() as conn:
         with conn.cursor() as cur:
             run_sql_file(cur, SQL_DIR / "silver" / "01_create_tables.sql")
@@ -36,7 +36,7 @@ def step_silver():
             conn.commit()
     print("  OK")
 
-    print("=== PASO 4b: Agregar ndices de rendimiento ===")
+    print("=== PASO 4b: Agregar índices de rendimiento ===")
     with get_connection() as conn:
         with conn.cursor() as cur:
             run_sql_file(cur, SQL_DIR / "silver" / "03_add_indexes.sql")

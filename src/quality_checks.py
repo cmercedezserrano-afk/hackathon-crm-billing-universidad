@@ -44,7 +44,7 @@ def run_quality_checks():
                 )
                 print(f"  {table}: {count} rows, {nulls} null IDs")
 
-            print("\n=== VERIFICACIN DE RELACIONES (Llaves Forneas) ===")
+            print("\n=== VERIFICACIÓN DE RELACIONES (Llaves Foráneas) ===")
 
             fk_checks = [
                 ("bronze.courses x professors",
@@ -71,7 +71,7 @@ def run_quality_checks():
                 print(f"  {name}: {status}")
                 checks.append({"table": name, "total_rows": "FK check", "null_ids": orphans, "status": status})
 
-            print("\n=== RELACIN CRUZADA University-Billing ===")
+            print("\n=== RELACIÓN CRUZADA University-Billing ===")
             cur.execute("""
                 SELECT COUNT(*)
                 FROM bronze.customers c

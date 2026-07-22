@@ -216,7 +216,47 @@ ls data/parquet/
 
 ---
 
-## 10. KPIs disponibles en Gold
+## 10. Modelo dimensional (Esquema Estrella)
+
+La capa Gold usa **esquema estrella**: las dimensiones rodean a los hechos para consultas rápidas e intuitivas.
+
+### Dimensiones (10 tablas descriptivas)
+
+| Dimensión | Filas | Descripción |
+|---|---|---|
+| `dim_date` | 3,287 | Calendario con año, mes, trimestre, día, fin de semana |
+| `dim_students` | 5,000 | Estudiantes con rango de edad |
+| `dim_courses` | 300 | Cursos con departamento y créditos |
+| `dim_semesters` | 8 | Semestres académicos |
+| `dim_professors` | 200 | Profesores |
+| `dim_customers` | 10,000 | Clientes con segmento y antigüedad |
+| `dim_products` | 200 | Productos con categoría y precio |
+| `dim_accounts` | 5,000 | Cuentas (empresas) |
+| `dim_contacts` | 15,000 | Contactos |
+| `dim_opportunity_stage` | 6 | Etapas del pipeline con orden y categoría |
+
+### Hechos (7 tablas de mediciones)
+
+| Hecho | Filas | Casos de uso |
+|---|---|---|
+| `fact_enrollments` | 25,000 | ¿Qué cursos tienen más demanda por semestre? |
+| `fact_grades` | 60,000 | ¿Cuál es el promedio por curso y país? |
+| `fact_subscriptions` | 15,000 | ¿Qué productos tienen mayor retención? |
+| `fact_invoices` | 50,000 | ¿Cuál es la tendencia de ingresos mensuales? |
+| `fact_payments` | 80,000 | ¿Qué métodos de pago son más usados? |
+| `fact_opportunities` | 3,000 | ¿Cuánto vale el pipeline por etapa? |
+| `fact_activities` | 20,000 | ¿Qué actividades de seguimiento se realizan? |
+
+### Puente (bridge)
+
+| Tabla | Filas | Descripción |
+|---|---|---|
+| `bridge_student_customer` | 5,000 | Relaciona estudiantes con clientes |
+| `fact_student_customer` | 5,000 | Hecho cruzado (agregado para análisis) |
+
+---
+
+## 11. KPIs disponibles en Gold
 
 | KPI | Tabla | Filas | Descripción |
 |---|---|---|---|
@@ -233,7 +273,39 @@ ls data/parquet/
 
 ---
 
-## 11. Datos disponibles (volumen)
+## 13. Recomendación para presentación en Millicom (Tigo) Bolivia
+
+Este proyecto se construyó con datos de University, Billing y CRM, pero las técnicas aplicadas son directamente transferibles a un operador de telecomunicaciones como Tigo.
+
+### Cómo traducir los dominios a telecomunicaciones
+
+| Dominio original | Equivalente en Tigo | Datos similares |
+|---|---|---|
+| University | Clientes pospago / prepago | Suscripciones, recargas, planes |
+| Billing | Facturación Tigo Money | Facturas, pagos, métodos de pago, mora |
+| CRM | Gestión de clientes Tigo | Cuentas corporativas, contactos, oportunidades, actividades de venta |
+
+### KPIs que aplican directamente a telecom
+
+| KPI | Traducción a Tigo |
+|---|---|
+| RFM | Clientes VIP vs ocasionales vs perdidos por falta de recarga |
+| Churn de suscripciones | Rotación de líneas pospago por plan |
+| Ciclo de vida cliente | Tiempo desde activación de línea hasta primera recarga o primer pago |
+| Riesgo de cobranza | Clientes con mora en facturación |
+| Pipeline de ventas | Oportunidades de venta corporativa (cuentas business) |
+| Ingresos mensuales | Revenue recurrente vs recargas eventuales |
+
+### Qué destacar en la presentación
+
+1. **Pipeline automatizado** — los datos llegan crudos y se transforman solos hasta tener KPIs listos. En Tigo, los datos de facturación, recargas y CRM llegarían al mismo pipeline.
+2. **Esquema estrella** — modelado profesional que cualquier analista de Tigo puede consultar con SQL básico.
+3. **10 KPIs pre-calculados** — nada de esperar queries complejas. Los indicadores ya están listos para dashboards en Power BI, Superset o Metabase.
+4. **Cross-domain** — la capacidad de cruzar estudiantes con clientes (en este proyecto) equivale a cruzar recargas con facturación o CRM con cobranza en Tigo.
+
+---
+
+## 14. Datos disponibles (volumen)
 
 | Dominio | Archivos | Total filas |
 |---|---|---|
