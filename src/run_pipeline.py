@@ -62,8 +62,8 @@ def step_quality():
 
 def step_export():
     print("=== PASO 7: Exportar a Parquet ===")
-    from export_parquet import export_gold_to_parquet
-    export_gold_to_parquet()
+    from export_parquet import export_all
+    export_all()
     print("  OK")
 
 

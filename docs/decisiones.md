@@ -94,7 +94,7 @@ accounts 1---* contacts
 ```
 students.student_id = customers.external_ref (formato: STU-0000001)
 ```
-De los 10,000 clientes, 5,000 están vinculados a un estudiante (relación 1:1 sintética en los datos). La vista `silver.vw_student_customer`, el puente `gold.bridge_student_customer` y el hecho `gold.fact_student_customer` materializan esta relación.
+De los 10,000 clientes, 5,000 están vinculados a un estudiante (relación 1:1 sintética en los datos). La vista `silver.vw_student_customer`, el puente `gold.student_customer_bridge` y el hecho `gold.student_customer_cross` materializan esta relación.
 
 ## Llaves foráneas (FOREIGN KEY)
 

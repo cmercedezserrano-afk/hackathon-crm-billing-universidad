@@ -1,0 +1,214 @@
+erDiagram
+    %% ======================================================
+    %% MÓDULO UNIVERSIDAD (clúster independiente, sin FK hacia CRM/Billing)
+    %% ======================================================
+    PROFESSORS ||--o{ COURSES : "dicta (courses.professor_id)"
+    STUDENTS ||--o{ ENROLLMENTS : "se inscribe en (enrollments.student_id)"
+    SEMESTERS ||--o{ ENROLLMENTS : "contiene (enrollments.semester_id)"
+    COURSES ||--o{ ENROLLMENTS : "es dictado como (enrollments.course_id)"
+    ENROLLMENTS ||--o| GRADES : "recibe (grades.enrollment_id)"
+
+    %% ======================================================
+    %% MÓDULO CRM
+    %% ======================================================
+    LEADS ||--o| ACCOUNTS : "se convierte en, al calificar (sin FK explícita en el modelo)"
+    LEADS ||--o| CONTACTS : "se convierte en (sin FK explícita en el modelo)"
+    LEADS ||--o| OPPORTUNITIES : "se convierte en (sin FK explícita en el modelo)"
+
+    ACCOUNTS ||--o{ CONTACTS : "emplea a (contacts.account_id)"
+    ACCOUNTS ||--o{ OPPORTUNITIES : "genera (opportunities.account_id)"
+    ACCOUNTS ||--o{ ACTIVITIES : "registra interacciones (activities.account_id)"
+
+    CONTACTS ||--o{ ACTIVITIES : "registra interacciones (activities.contact_id)"
+    OPPORTUNITIES ||--o{ ACTIVITIES : "registra gestión (activities.opportunity_id)"
+    LEADS ||--o{ ACTIVITIES : "registra interacciones (activities.lead_id)"
+
+    OPPORTUNITIES ||--o{ OPPORTUNITY_CONTACTS : "involucra (opportunity_contacts.opportunity_id)"
+    CONTACTS ||--o{ OPPORTUNITY_CONTACTS : "participa en (opportunity_contacts.contact_id)"
+
+    %% ======================================================
+    %% PUENTE CRM -> BILLING
+    %% ======================================================
+    ACCOUNTS ||--|| CUSTOMERS : "se mapea como 1:1 (accounts.customer_id)"
+
+    %% ======================================================
+    %% MÓDULO BILLING
+    %% ======================================================
+    CUSTOMERS ||--o{ SUBSCRIPTIONS : "contrata (subscriptions.customer_id)"
+    CUSTOMERS ||--o{ INVOICES : "recibe (invoices.customer_id)"
+    PRODUCTS ||--o{ SUBSCRIPTIONS : "incluido en (subscriptions.product_id)"
+    PRODUCTS ||--o{ INVOICE_ITEMS : "facturado como (invoice_items.product_id)"
+    SUBSCRIPTIONS ||--o{ INVOICES : "genera (invoices.subscription_id)"
+    INVOICES ||--o{ INVOICE_ITEMS : "compuesto por (invoice_items.invoice_id)"
+    INVOICES ||--o{ PAYMENTS : "registrado en (payments.invoice_id)"
+
+    %% ======================================================
+    %% DEFINICIÓN DE ENTIDADES - UNIVERSIDAD
+    %% ======================================================
+    STUDENTS {
+        string student_id PK
+        string first_name
+        string last_name
+        string email
+        date enrollment_date
+        string status
+    }
+
+    PROFESSORS {
+        string professor_id PK
+        string first_name
+        string last_name
+        string department
+        string email
+    }
+
+    SEMESTERS {
+        string semester_id PK
+        string name "Ej. 2023-1"
+        date start_date
+        date end_date
+    }
+
+    COURSES {
+        string course_id PK
+        string professor_id FK
+        string course_code "Ej. MAT101"
+        string title "Ej. Cálculo I"
+        int credits
+        string department
+    }
+
+    ENROLLMENTS {
+        string enrollment_id PK
+        string student_id FK
+        string course_id FK
+        string semester_id FK
+        date enroll_date
+        string status "active, dropped, completed"
+    }
+
+    GRADES {
+        string grade_id PK
+        string enrollment_id FK
+        float grade_point "Ej. 4.5, 7.0"
+        string letter_grade "Ej. A, B, C"
+        date recorded_date
+    }
+
+    %% ======================================================
+    %% DEFINICIÓN DE ENTIDADES - CRM
+    %% ======================================================
+    ACCOUNTS {
+        string account_id PK
+        string customer_id FK "Vínculo con Billing"
+        string name "Nombre de la Empresa"
+        string industry
+        string website
+        string billing_country
+    }
+
+    CONTACTS {
+        string contact_id PK
+        string account_id FK
+        string first_name
+        string last_name
+        string email
+        string job_title
+    }
+
+    OPPORTUNITIES {
+        string opportunity_id PK
+        string account_id FK
+        string name
+        float amount
+        string stage
+        date expected_close_date
+    }
+
+    ACTIVITIES {
+        string activity_id PK
+        string account_id FK
+        string contact_id FK
+        string opportunity_id FK
+        string lead_id FK
+        string type "Call, Email, Meeting"
+        datetime activity_date
+    }
+
+    LEADS {
+        string lead_id PK
+        string first_name
+        string last_name
+        string email
+        string company
+        string status "new, qualified, converted"
+    }
+
+    OPPORTUNITY_CONTACTS {
+        string opportunity_id PK, FK
+        string contact_id PK, FK
+        string role "Ej. Decisor, Influenciador"
+    }
+
+    %% ======================================================
+    %% DEFINICIÓN DE ENTIDADES - BILLING
+    %% (CUSTOMERS e INVOICES usan la versión de Billing,
+    %%  ya que es la más completa; era duplicada en CRM)
+    %% ======================================================
+    CUSTOMERS {
+        string customer_id PK
+        string external_ref
+        string first_name
+        string last_name
+        string email
+        string country
+        string segment
+    }
+
+    PRODUCTS {
+        string product_id PK
+        string sku
+        string name
+        string category
+        float monthly_price
+        boolean active
+    }
+
+    SUBSCRIPTIONS {
+        string subscription_id PK
+        string customer_id FK
+        string product_id FK
+        date start_date
+        date end_date
+        string status
+    }
+
+    INVOICES {
+        string invoice_id PK
+        string customer_id FK
+        string subscription_id FK
+        date issue_date
+        date due_date
+        float total_amount
+        string currency
+        string status
+    }
+
+    INVOICE_ITEMS {
+        string invoice_item_id PK
+        string invoice_id FK
+        string product_id FK
+        string description
+        int quantity
+        float unit_amount
+        float total_amount
+    }
+
+    PAYMENTS {
+        string payment_id PK
+        string invoice_id FK
+        date payment_date
+        float amount_paid
+        string method
+        string status
+    }

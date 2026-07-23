@@ -308,32 +308,56 @@ Power BI Desktop puede conectarse directamente al esquema Gold para crear dashbo
 
 5. Cargar los datos.
 
-### Relaciones automáticas
+### Relaciones según modelo de datos (fuente: `mermaid_ultimo_completo.txt`)
 
-Power BI detecta automáticamente las relaciones por las claves foráneas definidas en PostgreSQL. Verificar en **Modelo** que las relaciones sean correctas:
+Power BI detecta automáticamente las relaciones por las FKs de PostgreSQL. Verifica en **Modelo** que estén correctas:
 
+#### Universidad
 ```
-dim_date.date_sk ← fact_*.date_sk
-dim_students.student_sk ← fact_enrollments.student_sk / fact_grades.student_sk
-dim_courses.course_sk ← fact_enrollments.course_sk / fact_grades.course_sk
-dim_customers.customer_sk ← fact_*.customer_sk
-dim_products.product_sk ← fact_subscriptions.product_sk / fact_invoices.product_sk
-dim_opportunity_stage.stage_sk ← fact_opportunities.stage_sk
+dim_professors.professor_id   1──M── dim_courses.professor_id
+dim_students.student_sk       1──M── fact_enrollments.student_sk
+dim_students.student_sk       1──M── fact_grades.student_sk
+dim_courses.course_sk         1──M── fact_enrollments.course_sk
+dim_courses.course_sk         1──M── fact_grades.course_sk
+fact_enrollments.enrollment_sk 1──M── fact_grades.enrollment_sk
 ```
 
-### Relaciones adicionales para KPIs
+#### Billing
+```
+dim_customers.customer_sk     1──M── fact_invoices.customer_sk
+dim_products.product_sk       1──M── fact_invoices.product_sk
+fact_invoices.invoice_sk      1──M── fact_payments.invoice_sk
+```
 
-Si cargas KPIs como tablas independientes, agrega estas relaciones manualmente en **Modelo**:
+#### KPIs
+```
+dim_courses.course_id         1──M── kpi_course_performance.course_id
+dim_customers.customer_id     1──M── kpi_rfm_segments.customer_id
+dim_customers.customer_id     1──M── kpi_collection_risk.customer_id
+dim_opportunity_stage.stage_name_es 1──1── kpi_sales_pipeline.etapa
+```
 
-| Desde | Hacia | Columna | Tipo |
+#### Puente estudiante → cliente
+```
+dim_students.student_id       1──M── bridge_student_customer.student_id
+bridge_student_customer.customer_id M──1── dim_customers.customer_id
+```
+
+### Cómo agregar relaciones faltantes
+
+**Modelo** → **Administrar relaciones** → **Nueva** y configura:
+
+| Desde (1) | Hacia (M) | Columna | Cardinalidad |
 |---|---|---|---|
-| `dim_professors` | `dim_courses` | `professor_id` | Muchos a 1 |
-| `dim_opportunity_stage` | `kpi_sales_pipeline` | `stage_name_es` ↔ `etapa` | 1 a 1 |
-| `kpi_course_performance` | `dim_courses` | `course_id` | Muchos a 1 |
-| `kpi_rfm_segments` | `dim_customers` | `customer_id` | Muchos a 1 |
-| `dim_students` ↔ `bridge_student_customer` ↔ `dim_customers` | — | `student_id` / `customer_id` | Puente |
-
-Para agregarlas: **Modelo** (vista) → **Administrar relaciones** → **Nueva** → seleccionar tablas y columnas.
+| `dim_date` | `fact_invoices` | `date_sk` | 1 a muchos |
+| `dim_date` | `fact_payments` | `date_sk` | 1 a muchos |
+| `dim_professors` | `dim_courses` | `professor_id` | 1 a muchos |
+| `dim_courses` | `kpi_course_performance` | `course_id` | 1 a muchos |
+| `dim_customers` | `kpi_rfm_segments` | `customer_id` | 1 a muchos |
+| `dim_customers` | `kpi_collection_risk` | `customer_id` | 1 a muchos |
+| `dim_opportunity_stage` | `kpi_sales_pipeline` | `stage_name_es` = `etapa` | 1 a 1 |
+| `dim_students` | `bridge_student_customer` | `student_id` | 1 a muchos |
+| `bridge_student_customer` | `dim_customers` | `customer_id` | Muchos a 1 |
 
 ### Sugerencia de dashboards
 

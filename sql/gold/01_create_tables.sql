@@ -22,8 +22,8 @@ CREATE SCHEMA IF NOT EXISTS gold;
 
 -- dim_date: unica fuente de verdad para fechas
 -- date_sk es clave sustituta entera para joins eficientes
-DROP TABLE IF EXISTS gold.dim_date CASCADE;
-CREATE TABLE gold.dim_date AS
+DROP TABLE IF EXISTS gold.date_dim CASCADE;
+CREATE TABLE gold.date_dim AS
 SELECT
     ROW_NUMBER() OVER (ORDER BY d) AS date_sk,
     d::DATE AS date,
@@ -36,20 +36,20 @@ SELECT
     CASE WHEN EXTRACT(DOW FROM d) IN (0, 6) THEN TRUE ELSE FALSE END AS is_weekend
 FROM GENERATE_SERIES('2018-01-01'::DATE, '2026-12-31'::DATE, '1 day') AS d;
 
-ALTER TABLE gold.dim_date ADD PRIMARY KEY (date_sk);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_dim_date_date ON gold.dim_date(date);
+ALTER TABLE gold.date_dim ADD PRIMARY KEY (date_sk);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dim_date_date ON gold.date_dim(date);
 
 -- UNIVERSITY
-DROP TABLE IF EXISTS gold.dim_semesters CASCADE;
-CREATE TABLE gold.dim_semesters AS SELECT * FROM silver.semesters;
-ALTER TABLE gold.dim_semesters ADD PRIMARY KEY (semester_id);
+DROP TABLE IF EXISTS gold.semesters CASCADE;
+CREATE TABLE gold.semesters AS SELECT * FROM silver.semesters;
+ALTER TABLE gold.semesters ADD PRIMARY KEY (semester_id);
 
-DROP TABLE IF EXISTS gold.dim_professors CASCADE;
-CREATE TABLE gold.dim_professors AS SELECT * FROM silver.professors;
-ALTER TABLE gold.dim_professors ADD PRIMARY KEY (professor_id);
+DROP TABLE IF EXISTS gold.professors CASCADE;
+CREATE TABLE gold.professors AS SELECT * FROM silver.professors;
+ALTER TABLE gold.professors ADD PRIMARY KEY (professor_id);
 
-DROP TABLE IF EXISTS gold.dim_students CASCADE;
-CREATE TABLE gold.dim_students AS
+DROP TABLE IF EXISTS gold.students CASCADE;
+CREATE TABLE gold.students AS
 SELECT
     *,
     EXTRACT(YEAR FROM AGE(enrolled_at))::INTEGER AS enrollment_age_years,
@@ -61,23 +61,23 @@ SELECT
         ELSE 'Mayor de 40'
     END AS age_range
 FROM silver.students;
-ALTER TABLE gold.dim_students ADD PRIMARY KEY (student_id);
+ALTER TABLE gold.students ADD PRIMARY KEY (student_id);
 
-DROP TABLE IF EXISTS gold.dim_courses CASCADE;
-CREATE TABLE gold.dim_courses AS SELECT * FROM silver.courses;
-ALTER TABLE gold.dim_courses ADD PRIMARY KEY (course_id);
+DROP TABLE IF EXISTS gold.courses CASCADE;
+CREATE TABLE gold.courses AS SELECT * FROM silver.courses;
+ALTER TABLE gold.courses ADD PRIMARY KEY (course_id);
 
 -- BILLING
-DROP TABLE IF EXISTS gold.dim_customers CASCADE;
-CREATE TABLE gold.dim_customers AS
+DROP TABLE IF EXISTS gold.customers CASCADE;
+CREATE TABLE gold.customers AS
 SELECT
     *,
     EXTRACT(YEAR FROM AGE(created_at))::INTEGER AS tenure_years
 FROM silver.customers;
-ALTER TABLE gold.dim_customers ADD PRIMARY KEY (customer_id);
+ALTER TABLE gold.customers ADD PRIMARY KEY (customer_id);
 
-DROP TABLE IF EXISTS gold.dim_products CASCADE;
-CREATE TABLE gold.dim_products AS
+DROP TABLE IF EXISTS gold.products CASCADE;
+CREATE TABLE gold.products AS
 SELECT
     *,
     CASE
@@ -86,54 +86,20 @@ SELECT
         ELSE 'Premium'
     END AS price_tier
 FROM silver.products;
-ALTER TABLE gold.dim_products ADD PRIMARY KEY (product_id);
+ALTER TABLE gold.products ADD PRIMARY KEY (product_id);
 
 -- CRM
-DROP TABLE IF EXISTS gold.dim_accounts CASCADE;
-CREATE TABLE gold.dim_accounts AS SELECT * FROM silver.accounts;
-ALTER TABLE gold.dim_accounts ADD PRIMARY KEY (account_id);
+DROP TABLE IF EXISTS gold.accounts CASCADE;
+CREATE TABLE gold.accounts AS SELECT * FROM silver.accounts;
+ALTER TABLE gold.accounts ADD PRIMARY KEY (account_id);
 
-DROP TABLE IF EXISTS gold.dim_contacts CASCADE;
-CREATE TABLE gold.dim_contacts AS SELECT * FROM silver.contacts;
-ALTER TABLE gold.dim_contacts ADD PRIMARY KEY (contact_id);
+DROP TABLE IF EXISTS gold.contacts CASCADE;
+CREATE TABLE gold.contacts AS SELECT * FROM silver.contacts;
+ALTER TABLE gold.contacts ADD PRIMARY KEY (contact_id);
 
--- dim_opportunity_stage: dimension conformada para etapas del pipeline
--- stage_name_es contiene la traduccion al espanol para reportes
-DROP TABLE IF EXISTS gold.dim_opportunity_stage CASCADE;
-CREATE TABLE gold.dim_opportunity_stage AS
-SELECT
-    ROW_NUMBER() OVER (ORDER BY sort_order) AS stage_sk,
-    stage AS stage_name_en,
-    CASE stage
-        WHEN 'prospect' THEN 'Prospeccion'
-        WHEN 'qualification' THEN 'Calificacion'
-        WHEN 'proposal' THEN 'Propuesta'
-        WHEN 'negotiation' THEN 'Negociacion'
-        WHEN 'won' THEN 'Ganada'
-        WHEN 'lost' THEN 'Perdida'
-        ELSE stage
-    END AS stage_name_es,
-    CASE
-        WHEN stage IN ('won') THEN 'Ganada'
-        WHEN stage IN ('lost') THEN 'Perdida'
-        WHEN stage IN ('negotiation', 'proposal') THEN 'Avanzada'
-        ELSE 'Temprana'
-    END AS stage_category,
-    sort_order
-FROM (
-    SELECT DISTINCT stage,
-        CASE stage
-            WHEN 'prospect' THEN 1
-            WHEN 'qualification' THEN 2
-            WHEN 'proposal' THEN 3
-            WHEN 'negotiation' THEN 4
-            WHEN 'won' THEN 5
-            WHEN 'lost' THEN 6
-            ELSE 7
-        END AS sort_order
-    FROM silver.opportunities
-) s;
-ALTER TABLE gold.dim_opportunity_stage ADD PRIMARY KEY (stage_sk);
+DROP TABLE IF EXISTS gold.leads CASCADE;
+CREATE TABLE gold.leads AS SELECT * FROM silver.leads;
+ALTER TABLE gold.leads ADD PRIMARY KEY (lead_id);
 
 -- ============================================================
 -- TABLAS DE HECHOS (ESTRELLA)
@@ -144,8 +110,8 @@ ALTER TABLE gold.dim_opportunity_stage ADD PRIMARY KEY (stage_sk);
 -- CASO DE USO: "?Que cursos tienen mayor/menor rendimiento por semestre?"
 -- HECHO: fact_enrollments
 -- Granularidad: 1 fila por inscripcion
-DROP TABLE IF EXISTS gold.fact_enrollments CASCADE;
-CREATE TABLE gold.fact_enrollments AS
+DROP TABLE IF EXISTS gold.enrollments CASCADE;
+CREATE TABLE gold.enrollments AS
 SELECT
     e.enrollment_id,
     e.student_id,
@@ -155,16 +121,16 @@ SELECT
     dd.date_sk AS enrolled_date_sk,
     e.status
 FROM silver.enrollments e
-LEFT JOIN gold.dim_date dd ON e.enrolled_at::DATE = dd.date;
-ALTER TABLE gold.fact_enrollments ADD PRIMARY KEY (enrollment_id);
-CREATE INDEX IF NOT EXISTS idx_fact_enrollments_student ON gold.fact_enrollments(student_id);
-CREATE INDEX IF NOT EXISTS idx_fact_enrollments_course ON gold.fact_enrollments(course_id);
+LEFT JOIN gold.date_dim dd ON e.enrolled_at::DATE = dd.date;
+ALTER TABLE gold.enrollments ADD PRIMARY KEY (enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_fact_enrollments_student ON gold.enrollments(student_id);
+CREATE INDEX IF NOT EXISTS idx_fact_enrollments_course ON gold.enrollments(course_id);
 
 -- CASO DE USO: "?Cual es el promedio de notas por curso, pais del estudiante y semestre?"
 -- HECHO: fact_grades (desnormalizado con claves de dimension directas para consultas estrella)
 -- Granularidad: 1 fila por calificacion
-DROP TABLE IF EXISTS gold.fact_grades CASCADE;
-CREATE TABLE gold.fact_grades AS
+DROP TABLE IF EXISTS gold.grades CASCADE;
+CREATE TABLE gold.grades AS
 SELECT
     g.grade_id,
     g.enrollment_id,
@@ -179,17 +145,17 @@ SELECT
     dd.date_sk AS graded_date_sk
 FROM silver.grades g
 JOIN silver.enrollments e ON g.enrollment_id = e.enrollment_id
-LEFT JOIN gold.dim_date dd ON g.graded_at::DATE = dd.date;
-ALTER TABLE gold.fact_grades ADD PRIMARY KEY (grade_id);
-CREATE INDEX IF NOT EXISTS idx_fact_grades_student ON gold.fact_grades(student_id);
-CREATE INDEX IF NOT EXISTS idx_fact_grades_course ON gold.fact_grades(course_id);
-CREATE INDEX IF NOT EXISTS idx_fact_grades_semester ON gold.fact_grades(semester_id);
+LEFT JOIN gold.date_dim dd ON g.graded_at::DATE = dd.date;
+ALTER TABLE gold.grades ADD PRIMARY KEY (grade_id);
+CREATE INDEX IF NOT EXISTS idx_fact_grades_student ON gold.grades(student_id);
+CREATE INDEX IF NOT EXISTS idx_fact_grades_course ON gold.grades(course_id);
+CREATE INDEX IF NOT EXISTS idx_fact_grades_semester ON gold.grades(semester_id);
 
 -- CASO DE USO: "?Que productos tienen mayor/menor retencion de clientes?"
 -- HECHO: fact_subscriptions
 -- Granularidad: 1 fila por suscripcion
-DROP TABLE IF EXISTS gold.fact_subscriptions CASCADE;
-CREATE TABLE gold.fact_subscriptions AS
+DROP TABLE IF EXISTS gold.subscriptions CASCADE;
+CREATE TABLE gold.subscriptions AS
 SELECT
     s.subscription_id,
     s.customer_id,
@@ -201,17 +167,17 @@ SELECT
     s.status,
     COALESCE(s.end_date, CURRENT_DATE) - s.start_date AS days_active
 FROM silver.subscriptions s
-LEFT JOIN gold.dim_date dd_start ON s.start_date::DATE = dd_start.date
-LEFT JOIN gold.dim_date dd_end ON s.end_date::DATE = dd_end.date;
-ALTER TABLE gold.fact_subscriptions ADD PRIMARY KEY (subscription_id);
-CREATE INDEX IF NOT EXISTS idx_fact_subscriptions_customer ON gold.fact_subscriptions(customer_id);
-CREATE INDEX IF NOT EXISTS idx_fact_subscriptions_product ON gold.fact_subscriptions(product_id);
+LEFT JOIN gold.date_dim dd_start ON s.start_date::DATE = dd_start.date
+LEFT JOIN gold.date_dim dd_end ON s.end_date::DATE = dd_end.date;
+ALTER TABLE gold.subscriptions ADD PRIMARY KEY (subscription_id);
+CREATE INDEX IF NOT EXISTS idx_fact_subscriptions_customer ON gold.subscriptions(customer_id);
+CREATE INDEX IF NOT EXISTS idx_fact_subscriptions_product ON gold.subscriptions(product_id);
 
 -- CASO DE USO: "?Cual es la tendencia de ingresos mensuales? ?Que clientes tienen saldo pendiente?"
 -- HECHO: fact_invoices
 -- Granularidad: 1 fila por factura
-DROP TABLE IF EXISTS gold.fact_invoices CASCADE;
-CREATE TABLE gold.fact_invoices AS
+DROP TABLE IF EXISTS gold.invoices CASCADE;
+CREATE TABLE gold.invoices AS
 SELECT
     i.invoice_id,
     i.customer_id,
@@ -225,21 +191,25 @@ SELECT
     COALESCE(p.total_paid, 0) AS total_paid,
     i.total - COALESCE(p.total_paid, 0) AS balance_due
 FROM silver.invoices i
-LEFT JOIN gold.dim_date dd_issued ON i.issued_at::DATE = dd_issued.date
-LEFT JOIN gold.dim_date dd_due ON i.due_at::DATE = dd_due.date
+LEFT JOIN gold.date_dim dd_issued ON i.issued_at::DATE = dd_issued.date
+LEFT JOIN gold.date_dim dd_due ON i.due_at::DATE = dd_due.date
 LEFT JOIN (
     SELECT invoice_id, SUM(amount) AS total_paid
     FROM silver.payments
     GROUP BY invoice_id
 ) p ON i.invoice_id = p.invoice_id;
-ALTER TABLE gold.fact_invoices ADD PRIMARY KEY (invoice_id);
-CREATE INDEX IF NOT EXISTS idx_fact_invoices_customer ON gold.fact_invoices(customer_id);
+ALTER TABLE gold.invoices ADD PRIMARY KEY (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_fact_invoices_customer ON gold.invoices(customer_id);
+
+DROP TABLE IF EXISTS gold.invoice_items CASCADE;
+CREATE TABLE gold.invoice_items AS SELECT * FROM silver.invoice_items;
+ALTER TABLE gold.invoice_items ADD PRIMARY KEY (invoice_item_id);
 
 -- CASO DE USO: "?Cual es el volumen de pagos por metodo y mes?"
 -- HECHO: fact_payments (separado de fact_invoices para granularidad de pago)
 -- Granularidad: 1 fila por pago
-DROP TABLE IF EXISTS gold.fact_payments CASCADE;
-CREATE TABLE gold.fact_payments AS
+DROP TABLE IF EXISTS gold.payments CASCADE;
+CREATE TABLE gold.payments AS
 SELECT
     p.payment_id,
     p.invoice_id,
@@ -250,40 +220,41 @@ SELECT
     p.method
 FROM silver.payments p
 JOIN silver.invoices i ON p.invoice_id = i.invoice_id
-LEFT JOIN gold.dim_date dd ON p.paid_at::DATE = dd.date;
-ALTER TABLE gold.fact_payments ADD PRIMARY KEY (payment_id);
-CREATE INDEX IF NOT EXISTS idx_fact_payments_invoice ON gold.fact_payments(invoice_id);
-CREATE INDEX IF NOT EXISTS idx_fact_payments_customer ON gold.fact_payments(customer_id);
+LEFT JOIN gold.date_dim dd ON p.paid_at::DATE = dd.date;
+ALTER TABLE gold.payments ADD PRIMARY KEY (payment_id);
+CREATE INDEX IF NOT EXISTS idx_fact_payments_invoice ON gold.payments(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_fact_payments_customer ON gold.payments(customer_id);
 
 -- CASO DE USO: "?Cual es el valor del pipeline de ventas por etapa?"
 -- HECHO: fact_opportunities
 -- Granularidad: 1 fila por oportunidad
-DROP TABLE IF EXISTS gold.fact_opportunities CASCADE;
-CREATE TABLE gold.fact_opportunities AS
+DROP TABLE IF EXISTS gold.opportunities CASCADE;
+CREATE TABLE gold.opportunities AS
 SELECT
     o.opportunity_id,
     o.account_id,
     o.name,
-    dos.stage_sk,
-    dos.stage_name_es AS stage,
+    o.stage,
     o.amount,
     o.close_date,
     dd_close.date_sk AS close_date_sk,
     o.created_at,
     dd_created.date_sk AS created_date_sk
 FROM silver.opportunities o
-LEFT JOIN gold.dim_opportunity_stage dos ON o.stage = dos.stage_name_en
-LEFT JOIN gold.dim_date dd_close ON o.close_date::DATE = dd_close.date
-LEFT JOIN gold.dim_date dd_created ON o.created_at::DATE = dd_created.date;
-ALTER TABLE gold.fact_opportunities ADD PRIMARY KEY (opportunity_id);
-CREATE INDEX IF NOT EXISTS idx_fact_opportunities_account ON gold.fact_opportunities(account_id);
-CREATE INDEX IF NOT EXISTS idx_fact_opportunities_stage ON gold.fact_opportunities(stage_sk);
+LEFT JOIN gold.date_dim dd_close ON o.close_date::DATE = dd_close.date
+LEFT JOIN gold.date_dim dd_created ON o.created_at::DATE = dd_created.date;
+ALTER TABLE gold.opportunities ADD PRIMARY KEY (opportunity_id);
+CREATE INDEX IF NOT EXISTS idx_fact_opportunities_account ON gold.opportunities(account_id);
+
+DROP TABLE IF EXISTS gold.opportunity_contacts CASCADE;
+CREATE TABLE gold.opportunity_contacts AS SELECT * FROM silver.opportunity_contacts;
+ALTER TABLE gold.opportunity_contacts ADD PRIMARY KEY (opportunity_id, contact_id);
 
 -- CASO DE USO: "?Cuales son las actividades de seguimiento por contacto y oportunidad?"
 -- HECHO: fact_activities
 -- Granularidad: 1 fila por actividad
-DROP TABLE IF EXISTS gold.fact_activities CASCADE;
-CREATE TABLE gold.fact_activities AS
+DROP TABLE IF EXISTS gold.activities CASCADE;
+CREATE TABLE gold.activities AS
 SELECT
     a.activity_id,
     a.contact_id,
@@ -293,65 +264,8 @@ SELECT
     a.occurred_at,
     dd.date_sk AS occurred_date_sk
 FROM silver.activities a
-LEFT JOIN gold.dim_date dd ON a.occurred_at::DATE = dd.date;
-ALTER TABLE gold.fact_activities ADD PRIMARY KEY (activity_id);
-
--- ============================================================
--- PUENTE CRUZADO: Student <-> Customer (Asociacion)
--- ============================================================
--- Tabla puente (bridge) que relaciona estudiantes con clientes.
--- No es un hecho puro porque no tiene medidas numericas.
--- Permite navegar de un dominio a otro sin mezclar granularidades.
-
-DROP TABLE IF EXISTS gold.bridge_student_customer CASCADE;
-CREATE TABLE gold.bridge_student_customer AS
-SELECT
-    s.student_id,
-    s.customer_id,
-    s.enrolled_at,
-    s.customer_since,
-    MIN(i.issued_at) AS first_invoice_date,
-    MIN(i.issued_at) - s.enrolled_at AS days_to_first_invoice
-FROM silver.vw_student_customer s
-LEFT JOIN silver.invoices i ON s.customer_id = i.customer_id
-GROUP BY s.student_id, s.customer_id, s.enrolled_at, s.customer_since;
-ALTER TABLE gold.bridge_student_customer ADD PRIMARY KEY (student_id, customer_id);
-
--- HECHO CRUZADO: Student Customer (agregado para analisis)
--- Mantiene compatibilidad con notebooks existentes
-DROP TABLE IF EXISTS gold.fact_student_customer CASCADE;
-CREATE TABLE gold.fact_student_customer AS
-WITH invoice_balance AS (
-    SELECT
-        i.invoice_id,
-        i.customer_id,
-        i.total,
-        COALESCE(p.total_paid, 0) AS total_paid,
-        i.total - COALESCE(p.total_paid, 0) AS balance_due
-    FROM silver.invoices i
-    LEFT JOIN (
-        SELECT invoice_id, SUM(amount) AS total_paid
-        FROM silver.payments
-        GROUP BY invoice_id
-    ) p ON i.invoice_id = p.invoice_id
-)
-SELECT
-    s.student_id,
-    s.student_first_name || ' ' || s.student_last_name AS student_name,
-    s.student_country,
-    s.enrolled_at,
-    s.customer_id,
-    s.student_first_name || ' ' || s.student_last_name AS customer_name,
-    s.segment,
-    s.customer_since,
-    COUNT(DISTINCT i.invoice_id) AS total_invoices,
-    COALESCE(SUM(i.total), 0) AS total_billed,
-    COALESCE(SUM(i.balance_due), 0) AS total_balance
-FROM silver.vw_student_customer s
-LEFT JOIN invoice_balance i ON s.customer_id = i.customer_id
-GROUP BY s.student_id, s.student_first_name, s.student_last_name, s.student_country,
-         s.enrolled_at, s.customer_id, s.segment, s.customer_since;
-ALTER TABLE gold.fact_student_customer ADD PRIMARY KEY (student_id, customer_id);
+LEFT JOIN gold.date_dim dd ON a.occurred_at::DATE = dd.date;
+ALTER TABLE gold.activities ADD PRIMARY KEY (activity_id);
 
 -- ============================================================
 -- MARTES ANALITICOS / KPIs
@@ -361,8 +275,8 @@ ALTER TABLE gold.fact_student_customer ADD PRIMARY KEY (student_id, customer_id)
 -- materializadas para reportes y dashboards.
 
 -- KPI: Rendimiento por estudiante
-DROP TABLE IF EXISTS gold.kpi_student_performance;
-CREATE TABLE gold.kpi_student_performance AS
+DROP TABLE IF EXISTS gold.calculo_tabestudiantes_tabmatriculas_tabnotas_datopromedio;
+CREATE TABLE gold.calculo_tabestudiantes_tabmatriculas_tabnotas_datopromedio AS
 SELECT
     s.student_id,
     s.first_name || ' ' || s.last_name AS student_name,
@@ -377,8 +291,8 @@ LEFT JOIN silver.grades g ON e.enrollment_id = g.enrollment_id
 GROUP BY s.student_id, s.first_name, s.last_name, s.country;
 
 -- KPI: Ingresos mensuales
-DROP TABLE IF EXISTS gold.kpi_monthly_revenue;
-CREATE TABLE gold.kpi_monthly_revenue AS
+DROP TABLE IF EXISTS gold.calculo_tabpagos_tabfacturas_datorecaudacion;
+CREATE TABLE gold.calculo_tabpagos_tabfacturas_datorecaudacion AS
 SELECT
     DATE_TRUNC('month', p.paid_at) AS month,
     COUNT(DISTINCT p.payment_id) AS total_payments,
@@ -391,8 +305,8 @@ GROUP BY DATE_TRUNC('month', p.paid_at)
 ORDER BY month;
 
 -- KPI: Pipeline de ventas (etapas en espanol)
-DROP TABLE IF EXISTS gold.kpi_sales_pipeline;
-CREATE TABLE gold.kpi_sales_pipeline AS
+DROP TABLE IF EXISTS gold.calculo_taboportunidades_datomontoporetapa;
+CREATE TABLE gold.calculo_taboportunidades_datomontoporetapa AS
 SELECT
     CASE stage
         WHEN 'prospect' THEN 'Prospeccion'
@@ -420,22 +334,23 @@ ORDER BY
     END;
 
 -- KPI: Conversion estudiante a cliente por pais
-DROP TABLE IF EXISTS gold.kpi_student_to_customer;
-CREATE TABLE gold.kpi_student_to_customer AS
+DROP TABLE IF EXISTS gold.calculo_tabestudiantes_tabclientes_datoconversion;
+CREATE TABLE gold.calculo_tabestudiantes_tabclientes_datoconversion AS
 SELECT
     s.country,
     COUNT(DISTINCT s.student_id) AS total_students,
-    COUNT(DISTINCT fsc.customer_id) AS became_customers,
-    ROUND(COUNT(DISTINCT fsc.customer_id) * 100.0 / NULLIF(COUNT(DISTINCT s.student_id), 0), 2) AS conversion_pct,
-    ROUND(AVG(fsc.total_billed), 2) AS avg_revenue_per_student
+    COUNT(DISTINCT v.customer_id) AS became_customers,
+    ROUND(COUNT(DISTINCT v.customer_id) * 100.0 / NULLIF(COUNT(DISTINCT s.student_id), 0), 2) AS conversion_pct,
+    ROUND(COALESCE(AVG(inv.total), 0), 2) AS avg_revenue_per_student
 FROM silver.students s
-LEFT JOIN gold.fact_student_customer fsc ON s.student_id = fsc.student_id
+LEFT JOIN silver.vw_student_customer v ON s.student_id = v.student_id
+LEFT JOIN silver.invoices inv ON v.customer_id = inv.customer_id
 GROUP BY s.country
 ORDER BY conversion_pct DESC;
 
 -- KPI: RFM - Segmentacion de clientes
-DROP TABLE IF EXISTS gold.kpi_rfm_segments;
-CREATE TABLE gold.kpi_rfm_segments AS
+DROP TABLE IF EXISTS gold.calculo_tabclientes_datorfm;
+CREATE TABLE gold.calculo_tabclientes_datorfm AS
 WITH rfm AS (
     SELECT
         c.customer_id,
@@ -463,8 +378,8 @@ FROM rfm
 ORDER BY monetary DESC;
 
 -- KPI: Rendimiento por curso
-DROP TABLE IF EXISTS gold.kpi_course_performance;
-CREATE TABLE gold.kpi_course_performance AS
+DROP TABLE IF EXISTS gold.calculo_tabcursos_tabmatriculas_tabnotas_datopromedio;
+CREATE TABLE gold.calculo_tabcursos_tabmatriculas_tabnotas_datopromedio AS
 SELECT
     c.course_id,
     c.code,
@@ -480,8 +395,8 @@ GROUP BY c.course_id, c.code, c.name, c.department
 ORDER BY avg_score DESC;
 
 -- KPI: Carga docente por profesor
-DROP TABLE IF EXISTS gold.kpi_professor_load;
-CREATE TABLE gold.kpi_professor_load AS
+DROP TABLE IF EXISTS gold.calculo_tabprofesores_tabcursos_tabmatriculas_datoalumnos;
+CREATE TABLE gold.calculo_tabprofesores_tabcursos_tabmatriculas_datoalumnos AS
 SELECT
     p.professor_id,
     p.first_name || ' ' || p.last_name AS professor_name,
@@ -495,8 +410,8 @@ GROUP BY p.professor_id, p.first_name, p.last_name, p.department
 ORDER BY total_students DESC;
 
 -- KPI: Churn de suscripciones
-DROP TABLE IF EXISTS gold.kpi_subscription_churn;
-CREATE TABLE gold.kpi_subscription_churn AS
+DROP TABLE IF EXISTS gold.calculo_tabsuscripciones_tabproductos_datotasaabandono;
+CREATE TABLE gold.calculo_tabsuscripciones_tabproductos_datotasaabandono AS
 SELECT
     p.category AS product_category,
     p.name AS product_name,
@@ -510,23 +425,23 @@ GROUP BY p.category, p.name
 ORDER BY churn_rate_pct DESC;
 
 -- KPI: Ciclo de vida estudiante -> cliente
-DROP TABLE IF EXISTS gold.kpi_student_lifecycle;
-CREATE TABLE gold.kpi_student_lifecycle AS
+DROP TABLE IF EXISTS gold.calculo_tabestudiantes_tabclientes_datociclovida;
+CREATE TABLE gold.calculo_tabestudiantes_tabclientes_datociclovida AS
 SELECT
-    fsc.student_name,
-    fsc.student_country,
-    fsc.enrolled_at AS enrollment_date,
-    MIN(i.issued_at) AS first_invoice_date,
-    MIN(i.issued_at) - fsc.enrolled_at AS days_to_first_invoice,
-    fsc.total_billed
-FROM gold.fact_student_customer fsc
-LEFT JOIN silver.invoices i ON fsc.customer_id = i.customer_id
-GROUP BY fsc.student_name, fsc.student_country, fsc.enrolled_at, fsc.total_billed
+    v.student_first_name || ' ' || v.student_last_name AS student_name,
+    v.student_country,
+    v.enrolled_at AS enrollment_date,
+    MIN(inv.issued_at) AS first_invoice_date,
+    MIN(inv.issued_at) - v.enrolled_at AS days_to_first_invoice,
+    COALESCE(SUM(inv.total), 0) AS total_billed
+FROM silver.vw_student_customer v
+LEFT JOIN silver.invoices inv ON v.customer_id = inv.customer_id
+GROUP BY v.student_id, v.student_first_name, v.student_last_name, v.student_country, v.enrolled_at
 ORDER BY days_to_first_invoice;
 
 -- KPI: Riesgo de cobranza
-DROP TABLE IF EXISTS gold.kpi_collection_risk;
-CREATE TABLE gold.kpi_collection_risk AS
+DROP TABLE IF EXISTS gold.calculo_tabclientes_tabfacturas_datoriesgo;
+CREATE TABLE gold.calculo_tabclientes_tabfacturas_datoriesgo AS
 SELECT
     c.customer_id,
     c.first_name || ' ' || c.last_name AS customer_name,
@@ -541,14 +456,14 @@ SELECT
         WHEN SUM(i.balance_due) > 0 THEN 'Bajo'
         ELSE 'Sin deuda'
     END AS risk_level
-FROM gold.fact_invoices i
+FROM gold.invoices i
 JOIN silver.customers c ON i.customer_id = c.customer_id
 GROUP BY c.customer_id, c.first_name, c.last_name, c.country
 ORDER BY total_debt DESC;
 
 -- KPI: Tasa de aprobacion por curso (nota minima 51)
-DROP TABLE IF EXISTS gold.kpi_pass_rate;
-CREATE TABLE gold.kpi_pass_rate AS
+DROP TABLE IF EXISTS gold.calculo_tabcursos_tabmatriculas_tabnotas_datoaprobacion;
+CREATE TABLE gold.calculo_tabcursos_tabmatriculas_tabnotas_datoaprobacion AS
 SELECT
     c.course_id,
     c.code,
@@ -567,8 +482,8 @@ GROUP BY c.course_id, c.code, c.name, c.department
 ORDER BY pass_rate_pct DESC;
 
 -- KPI: Matriculas por semestre
-DROP TABLE IF EXISTS gold.kpi_enrollment_trend;
-CREATE TABLE gold.kpi_enrollment_trend AS
+DROP TABLE IF EXISTS gold.calculo_tabsemestres_tabmatriculas_datoinscripciones;
+CREATE TABLE gold.calculo_tabsemestres_tabmatriculas_datoinscripciones AS
 SELECT
     sem.semester_id,
     sem.code AS semester_name,

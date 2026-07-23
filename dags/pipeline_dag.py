@@ -34,7 +34,7 @@ with DAG(
     gold = BashOperator(
         task_id="gold_model",
         bash_command="cd /opt/airflow && python src/run_pipeline.py gold",
-        doc="Crea esquema oro: 10 dimensiones, 7 hechos, 1 puente y 10 KPIs en esquema estrella",
+        doc="Crea esquema gold: 11 dimensiones, 8 hechos y 12 KPIs en esquema estrella",
     )
 
     quality = BashOperator(
