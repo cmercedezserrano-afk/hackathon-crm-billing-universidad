@@ -80,33 +80,27 @@ services:
       pip install --upgrade pandas matplotlib seaborn 'sqlalchemy>=2.0.36' psycopg2-binary pyarrow &&
       start-notebook.sh --NotebookApp.token='${JUPYTER_TOKEN}'
       "
-  superset-init:
-    image: apache/superset:latest
-    container_name: bootcamp-superset-init
-    environment:
-      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-superset_secret_key_change_me}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: >
-      bash -c "
-      superset db upgrade &&
-      superset fab create-admin --username admin --password ${SUPERSET_ADMIN_PASSWORD:-admin} --firstname Admin --lastname User --email admin@example.com;
-      superset init
-      "
   superset:
     image: apache/superset:latest
     container_name: bootcamp-superset
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-superset_secret_key_change_me}
+      PYTHONPATH: /app/superset_home/.local/lib/python3.10/site-packages:$PYTHONPATH
     ports:
       - "8088:8088"
+    volumes:
+      - superset_home:/app/superset_home
     depends_on:
-      superset-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     command: >
       bash -c "
+      pip install --force-reinstall --no-cache-dir psycopg2-binary 2>/dev/null;
+      superset db upgrade &&
+      superset fab create-admin --username admin --password ${SUPERSET_ADMIN_PASSWORD:-admin} --firstname Admin --lastname User --email admin@example.com;
+      superset init;
       superset run -p 8088 --host 0.0.0.0 --with-threads
       "
 volumes:
   postgres_data:
+  superset_home:
